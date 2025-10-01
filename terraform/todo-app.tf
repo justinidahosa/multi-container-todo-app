@@ -4,7 +4,7 @@ resource "aws_instance" "todo_server" {
   key_name      = "my-key"
   subnet_id     = aws_subnet.public_subnet.id
 
-  vpc_security_group_ids = [aws_security_group.todo_sg.id]
+  
 
   user_data = <<-EOF
               #!/bin/bash
@@ -16,7 +16,7 @@ resource "aws_instance" "todo_server" {
               chmod +x /usr/local/bin/docker-compose
               mkdir -p /home/ec2-user/todo
               cd /home/ec2-user/todo
-              git clone https://github.com/YOUR_GITHUB_REPO.git .
+              git clone https://github.com/justinidahosa/multi-container-todo-app.git .
               docker-compose up -d
               EOF
 
