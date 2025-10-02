@@ -9,26 +9,46 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      id-token: write
+
     steps:
-      # 1️⃣ Checkout the repository
+      #  Checkout the code
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Configure AWS credentials
+      # Configure AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1   # change to your region
+          aws-region: us-east-1 # replace with your region
 
-      # 3️⃣ Deploy app via SSM
-      - name: Deploy via SSM
+      # Deploy to EC2 via SSM
+      - name: Deploy app via SSM
         run: |
-          # Get EC2 instance ID by Name tag
+          # Get the EC2 instance ID by Name tag
           INSTANCE_ID=$(aws ec2 describe-instances \
             --filters "Name=tag:Name,Values=todo-server" \
             --query "Reservations[0].Instances[0].InstanceId" \
             --output text)
 
           echo "Deploying to EC2 instance $INSTANCE_ID via SSM..."
+
+          # Run commands on EC2 via SSM
+          aws ssm send-command \
+            --targets "Key=instanceIds,Values=$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy multi-container todo app" \
+            --parameters 'commands=[
+              "cd /home/ec2-user/multi-container-todo-app",
+              "git reset --hard",
+              "git clean -fd",
+              "git pull",
+              "docker-compose up -d --build"
+            ]' \
+            --timeout-seconds 600 \
+            --region us-east-1
+
