@@ -1,27 +1,36 @@
 name: Deploy to EC2
 
+# Trigger on push to main or manual trigger
 on:
   push:
     branches:
-      - main        # Trigger deployment on push to main branch
-  workflow_dispatch: # Allows manual trigger
+      - main
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # Checkout the repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Start SSH agent and add key
+      # Set up SSH key (Windows-safe)
+      - name: Start SSH agent and add private key
         run: |
+          echo "Starting SSH agent..."
           eval "$(ssh-agent -s)"
+          
+          # Remove carriage returns from Windows copy-pasted key
           echo "${{ secrets.EC2_SSH_KEY }}" | tr -d '\r' | ssh-add -
+          
+          # Ensure known_hosts file includes EC2 host
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to EC2
+      # Deploy to EC2
+      - name: Deploy app via SSH
         run: |
           ssh ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
