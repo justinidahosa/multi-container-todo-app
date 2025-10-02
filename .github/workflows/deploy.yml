@@ -1,0 +1,42 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main        # Trigger deployment on push to main branch
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up SSH key
+        uses: webfactory/ssh-agent@v0.8.1
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Deploy to EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e
+            echo "=== Starting deployment ==="
+
+            cd ~/multi-container-todo-app || exit 1
+
+            # Ensure Docker Compose is executable
+            chmod +x /usr/local/bin/docker-compose
+
+            # Pull latest code
+            git reset --hard
+            git clean -fd
+            git pull origin main
+
+            # Build and run containers
+            docker-compose up -d --build
+
+            echo "=== Deployment finished successfully ==="
+          EOF
